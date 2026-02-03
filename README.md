@@ -1,5 +1,5 @@
 # OCSS
-Optimal Control Splitting Solver
+Optimal Control Splitting Solver is a Convex solver which currently supports Linear dynamics (LTI and LTV) and  box/ball constraints.
 
 This repository contains a C++ optimal control splitting solver (OCSS) and a suite of Python benchmarks to compare its performance against `cvxpy`-based solvers (OSQP, Clarabel, ECOS) and DAQP.
 
