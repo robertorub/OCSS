@@ -82,19 +82,26 @@ It generates:
 This problem involves stabilizing a quadrotor drone around a hovering position.
 -   **System**: The model has 12 states and 4 control inputs 
 -   **Constraints**: Linear constraints.
+![solver stats](figures/stats_plot/Stats_Performance_Linear_Quadrotor.png)
 
 ### B. Oscillating Masses
 This benchmark models a chain of 4 masses connected by springs and dampers, with the ends fixed to walls.
 -   **System**: The model has 8 states and 4 control inputs
 -   **Constraints**: Linear constraints.
 
+![solver stats](figures/stats_plot/Stats_Performance_Oscillating_Masses.png)
+
 ### C. Spacecraft Rendezvous (HCW)
 A chaser spacecraft performing a rendezvous maneuver with a target spacecraft in a circular orbit, modeled using the linearized Hill-Clohessy-Wiltshire (HCW) equations.
 -   **System**: The model has 6 states and 3 inputs
 -   **Constraints**: Linear constraints.
+
+![solver stats](figures/stats_plot/Stats_Performance_Spacecraft.png)
 
 
 ### D. Triple Integrator (3D)
 A high-order control problem where we control the "jerk" (derivative of acceleration) of a point mass in 3D space.
 -   **System**: The 9 states and 3 inputs represent the jerk along each axis.
 -   **Constraints**: Linear constraints and Norm constraints (SOC).
+
+![solver stats](figures/stats_plot/Stats_Performance_Triple_Integrator.png)
