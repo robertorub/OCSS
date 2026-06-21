@@ -101,7 +101,7 @@ A chaser spacecraft performing a rendezvous maneuver with a target spacecraft in
 
 ### D. Triple Integrator (3D)
 A high-order control problem where we control the "jerk" (derivative of acceleration) of a point mass in 3D space.
--   **System**: The 9 states and 3 inputs represent the jerk along each axis.
+-   **System**: The model has 9 states and 3 inputs.
 -   **Constraints**: Linear constraints and Norm constraints (SOC).
 
 ![solver stats](figures/stats_plot/Stats_Performance_Triple_Integrator.png)
