@@ -74,7 +74,7 @@ void ADMM<scalar, nx, nu, N, nx_tilde, nu_tilde,
     ws.tmp2_u_tilde.noalias() += (1 / rho) * ws.variables.y_u.col(i);
     auto u_tilde_i = ws.variables.u_tilde.col(i);
 
-    ocp.input_constraints[i].project(u_tilde_i, ws.tmp2_u_tilde);
+    prox_or_project(ocp.input_constraints[i], u_tilde_i, ws.tmp2_u_tilde, rho);
 
     // bound_projection(ws.variables.u_tilde.col(i), ws.tmp2_u_tilde,ocp.u_lb,
     // ocp.u_ub);
@@ -94,7 +94,7 @@ void ADMM<scalar, nx, nu, N, nx_tilde, nu_tilde,
         (1 / rho) * ws.variables.y_x.col(i + 1); // i+1 because x[0] is x0
     // projections
     auto x_tilde_iplus1 = ws.variables.x_tilde.col(i + 1);
-    ocp.state_constraints[i].apply_projections(x_tilde_iplus1, ws.tmp2_x_tilde);
+    ocp.state_constraints[i].apply_prox(x_tilde_iplus1, ws.tmp2_x_tilde, rho);
 
     // dual update
     ws.variables.y_x.col(i + 1).noalias() +=

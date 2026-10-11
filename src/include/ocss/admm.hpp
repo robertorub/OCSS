@@ -22,6 +22,24 @@ public:
   void reset();
   const Status<scalar> &get_status() const { return status; }
 
+  // largest violation of the hard sets by (x_tilde, u_tilde), soft sets only
+  scalar soft_violation() const {
+    scalar v = scalar(0);
+    for (int k = 0; k < N; ++k) {
+      v = std::max(v, ocp.state_constraints[k].violation(
+                          ws.variables.x_tilde.col(k + 1)));
+      v = std::max(v, violation_of(ocp.input_constraints[k],
+                                   ws.variables.u_tilde.col(k)));
+    }
+    return v;
+  }
+  const Eigen::Matrix<scalar, nx_tilde, N + 1> &state_duals() const {
+    return ws.variables.y_x;
+  }
+  const Eigen::Matrix<scalar, nu_tilde, N> &input_duals() const {
+    return ws.variables.y_u;
+  }
+
 private:
   const OptimalControlData<
       scalar, nx, nu, N, nx_tilde, UniformTrajectoryStateConstraints,
