@@ -51,11 +51,9 @@ struct RiccatiFactors {
   Eigen::Matrix<scalar, nx, N> Pb; // col k is P_{k+1} b_k
 
   // ---------- Temporary buffers for riccati factorization (preallocated) ----------
-  Eigen::Matrix<scalar, nx, nx> pa;    // nx x nx
-  Eigen::Matrix<scalar, nx, nu> pb;    // nx x nu
-  //Eigen::Matrix<scalar, nu, nx> bpa;   // nu x nx
-  Eigen::Matrix<scalar, nu, nu> bpb;   // nu x nu
-  Eigen::Matrix<scalar, nx, nx> apa;   // nx x nx
+  Eigen::Matrix<scalar, nx, nx + nu> AB;       // [A B]
+  Eigen::Matrix<scalar, nx, nx + nu> PAB;      // P [A B]
+  Eigen::Matrix<scalar, nx + nu, nx + nu> G;   // [A B]' P [A B]
   void setZero() noexcept {
     for(int i=0; i<N; ++i){
         Lambda[i].setZero();
@@ -67,11 +65,9 @@ struct RiccatiFactors {
     l.setZero();
     p.setZero();
     Pb.setZero();
-    pa.setZero();
-    pb.setZero();
-    //bpa.setZero();
-    bpb.setZero();
-    apa.setZero();
+    AB.setZero();
+    PAB.setZero();
+    G.setZero();
   }
 
 

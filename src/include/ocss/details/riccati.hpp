@@ -18,59 +18,34 @@ void ADMM<scalar, nx, nu, N, nx_tilde, nu_tilde,
   ws.factors.P[N] = ws.Pn_admm;
 
   // Backward Riccati recursion
+  auto &fac = ws.factors;
   for (int k = N - 1; k >= 0; --k) {
 
-    // pa = P_{k+1}' * A_k
-    ws.factors.pa.noalias() = ws.factors.P[k + 1] * ocp.Ad[k];
-
-    // pb = P_{k+1}' * B_k
-    ws.factors.pb.noalias() = ws.factors.P[k + 1] * ocp.Bd[k];
+    // G = [A B]' P_{k+1} [A B] = [A'PA A'PB; B'PA B'PB]
+    fac.AB.template leftCols<nx>() = ocp.Ad[k];
+    fac.AB.template rightCols<nu>() = ocp.Bd[k];
+    fac.PAB.noalias() = fac.P[k + 1] * fac.AB;
+    fac.G.noalias() = fac.AB.transpose() * fac.PAB;
 
     // P_{k+1} b_k is constant during the ADMM iterations
-    ws.factors.Pb.col(k).noalias() = ws.factors.P[k + 1] * ocp.b.col(k);
+    fac.Pb.col(k).noalias() = fac.P[k + 1] * ocp.b.col(k);
 
-    // bpa = B_k' * pa
-    // ws.factors.bpa.noalias() = ocp.Bd[k].transpose() * ws.factors.pa;
-    ws.factors.L[k].noalias() = ocp.Bd[k].transpose() * ws.factors.pa;
-    // bpb = B_k' * pb + R_k
-    ws.factors.bpb.noalias() = ocp.Bd[k].transpose() * ws.factors.pb;
-    ws.factors.bpb.noalias() += ws.R_admm[k];
-    // Symmetrize
-    // ws.factors.bpb = 0.5 * (ws.factors.bpb + ws.factors.bpb.transpose());
-    ws.factors.Lambda[k] = 0.5 * (ws.factors.bpb + ws.factors.bpb.transpose());
+    // Lambda Lambda' = B'PB + R (symmetrized)
+    fac.Lambda[k] = fac.G.template bottomRightCorner<nu, nu>() + ws.R_admm[k];
+    fac.Lambda[k] = (scalar(0.5) * (fac.Lambda[k] + fac.Lambda[k].transpose())).eval();
 
-    // Cholesky: bpb = L * L'
+    // in place cholesky, only the lower part is updated (the upper part is unusable)
+    Eigen::LLT<Eigen::Ref<Eigen::Matrix<scalar, nu, nu>>> llt(fac.Lambda[k]);
+    fac.Linv[k] = fac.Lambda[k].template triangularView<Eigen::Lower>().solve(
+        Eigen::Matrix<scalar, nu, nu>::Identity());
 
-    // Eigen::LLT<Eigen::Matrix<scalar, nu, nu>> llt(ws.factors.bpb);
+    // L_k = Lambda^{-1} B'PA
+    fac.L[k].noalias() = fac.Linv[k] * fac.G.template bottomLeftCorner<nu, nx>();
 
-    // std::cout << "Riccati factorization k= " << k << "\n";
-
-    Eigen::LLT<Eigen::Ref<Eigen::Matrix<scalar, nu, nu>>> llt(
-        ws.factors.Lambda[k]); // in place cholesky, note only the lower part is
-                               // updated the upper part remains unchanged (and
-                               // unusable!!!)
-    ws.factors.Linv[k] =
-        ws.factors.Lambda[k].template triangularView<Eigen::Lower>().solve(
-            Eigen::Matrix<scalar, nu, nu>::Identity());
-
-    // L_k = Λ_k^{-1} * bpa
-    // ws.factors.L[k] =
-    // ws.factors.Lambda[k].triangularView<Eigen::Lower>().solve(ws.factors.bpa);
-    ws.factors.Lambda[k].template triangularView<Eigen::Lower>().solveInPlace(
-        ws.factors.L[k]);
-
-    // apa = A_k' * pa + Q_k
-    ws.factors.apa.noalias() = ocp.Ad[k].transpose() * ws.factors.pa;
-    ws.factors.apa.noalias() += ws.Q_admm[k];
-
-    // apa -= L_k' * L_k
-    ws.factors.apa.noalias() -=
-        ws.factors.L[k].transpose() *
-        ws.factors
-            .L[k]; // better way, do a rank update as the matrix is symmetric
-
-    // P_k = Symmetric(apa)
-    ws.factors.P[k] = 0.5 * (ws.factors.apa + ws.factors.apa.transpose());
+    // P_k = A'PA + Q - L'L (symmetrized)
+    fac.P[k] = fac.G.template topLeftCorner<nx, nx>() + ws.Q_admm[k];
+    fac.P[k].noalias() -= fac.L[k].transpose() * fac.L[k];
+    fac.P[k] = (scalar(0.5) * (fac.P[k] + fac.P[k].transpose())).eval();
   }
 }
 
