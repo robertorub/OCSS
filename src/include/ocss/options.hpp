@@ -10,5 +10,6 @@ public:
   scalar rel_tol = scalar(1e-3);
   int max_iterations = 1000;
   scalar rho_min = scalar(0.1);
+  bool verbose = true;
 };
 } // namespace ocss

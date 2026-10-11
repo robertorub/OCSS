@@ -155,6 +155,8 @@ bool ADMM<scalar, nx, nu, N, nx_tilde, nu_tilde,
   r_bound_1 = std::sqrt(r_bound_1);
   s_bound = std::sqrt(s_bound);
   const scalar scaling = std::sqrt(N * (nx + nu));
+  status.primal_residual = r_norm;
+  status.dual_residual = s_norm;
   if (r_norm < options.abs_tol * scaling + options.rel_tol * r_bound_1 &&
       s_norm < options.abs_tol * scaling + options.rel_tol * s_bound) {
     return true;
@@ -175,6 +177,7 @@ ADMM<scalar, nx, nu, N, nx_tilde, nu_tilde, UniformTrajectoryStateConstraints,
      Projectors...>::solve(const Eigen::Matrix<scalar, nx, 1> &_x0) {
 
   ws.variables.x.col(0) = _x0;
+  status = Status<scalar>();
   analyze_F();
   update_Q_and_R();
 
@@ -191,8 +194,10 @@ ADMM<scalar, nx, nu, N, nx_tilde, nu_tilde, UniformTrajectoryStateConstraints,
     if (i % 25 == 0) {
 
       if (converged()) {
-        std::cout << "ADMM converged in " << i << " iterations.\n";
-
+        status.iterations = i;
+        status.converged = true;
+        if (options.verbose)
+          std::cout << "ADMM converged in " << i << " iterations.\n";
         return ws.variables;
       }
 
@@ -205,6 +210,7 @@ ADMM<scalar, nx, nu, N, nx_tilde, nu_tilde, UniformTrajectoryStateConstraints,
 
     update_q_and_s();
   }
+  status.iterations = options.max_iterations - 1;
   return ws.variables;
 }
 

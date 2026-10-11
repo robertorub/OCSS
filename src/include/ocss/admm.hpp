@@ -20,6 +20,7 @@ public:
   const OptimizationVariables<scalar, nx, nu, N, nx_tilde, nu_tilde> &
   solve(const Eigen::Matrix<scalar, nx, 1> &_x0);
   void reset();
+  const Status<scalar> &get_status() const { return status; }
 
 private:
   const OptimalControlData<
