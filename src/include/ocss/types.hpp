@@ -41,6 +41,7 @@ struct RiccatiFactors {
   std::array<Eigen::Matrix<scalar, nu, nu>, N> Lambda;
   std::array<Eigen::Matrix<scalar, nx, nx>, N + 1> P;
   std::array<Eigen::Matrix<scalar, nu, nx>, N> L;
+  std::array<Eigen::Matrix<scalar, nu, nu>, N> Linv; // Lambda[k]^{-1}, lower triangular
 
   // Stage-indexed vectors stored column-wise:
   // l : nu x N     (col k is l_k)
@@ -59,6 +60,7 @@ struct RiccatiFactors {
     for(int i=0; i<N; ++i){
         Lambda[i].setZero();
         L[i].setZero();
+        Linv[i].setZero();
         P[i].setZero();
     };
     P[N].setZero();

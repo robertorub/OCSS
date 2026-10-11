@@ -49,6 +49,9 @@ void ADMM<scalar, nx, nu, N, nx_tilde, nu_tilde,
         ws.factors.Lambda[k]); // in place cholesky, note only the lower part is
                                // updated the upper part remains unchanged (and
                                // unusable!!!)
+    ws.factors.Linv[k] =
+        ws.factors.Lambda[k].template triangularView<Eigen::Lower>().solve(
+            Eigen::Matrix<scalar, nu, nu>::Identity());
 
     // L_k = Λ_k^{-1} * bpa
     // ws.factors.L[k] =
@@ -91,20 +94,16 @@ void ADMM<scalar, nx, nu, N, nx_tilde, nu_tilde,
     const Eigen::Matrix<scalar, nx, nu> &Bn = ocp.Bd[k];
     auto qn = ws.q_admm.col(k);
     auto sn = ws.s_admm.col(k);
-    const Eigen::Matrix<scalar, nu, nu> &Lambdan =
-        ws.factors.Lambda[k];                                  // lower
     const Eigen::Matrix<scalar, nu, nx> &Ln = ws.factors.L[k]; // nu×nx
 
     // tmp_x = Pnext' * b + pnext
     ws.tmp_x = ws.factors.Pb.col(k);
     ws.tmp_x.noalias() += pnext;
 
-    // l[k] = B' * tmp_x + s
-    ln.noalias() = Bn.transpose() * ws.tmp_x;
-    ln.noalias() += sn;
-
-    // Solve Lam * l = l  (in-place lower-triangular solve)
-    Lambdan.template triangularView<Eigen::Lower>().solveInPlace(ln);
+    // l[k] = Lam^{-1} (B' * tmp_x + s)
+    ws.tmp_u.noalias() = Bn.transpose() * ws.tmp_x;
+    ws.tmp_u.noalias() += sn;
+    ln.noalias() = ws.factors.Linv[k] * ws.tmp_u;
 
     // p[k] = A' * tmp_x + q - Lk' * l[k]
     pn.noalias() = An.transpose() * ws.tmp_x;
@@ -123,8 +122,6 @@ void ADMM<scalar, nx, nu, N, nx_tilde, nu_tilde,
     const auto bk = ocp.b.col(k);
     const Eigen::Matrix<scalar, nx, nx> &Pnext = ws.factors.P[k + 1];
     const auto pnext = ws.factors.p.col(k + 1);
-    const Eigen::Matrix<scalar, nu, nu> &Lambdak =
-        ws.factors.Lambda[k];                                  // lower
     const Eigen::Matrix<scalar, nu, nx> &Lk = ws.factors.L[k]; // nu×nx
     const auto lk = ws.factors.l.col(k);
 
@@ -133,15 +130,10 @@ void ADMM<scalar, nx, nu, N, nx_tilde, nu_tilde,
     auto uk = ws.variables.u.col(k);
     // Vec& lambda_next  = sol.lambda[k + 1]; // unused
 
+    // u = -Lam^{-T} (L x + l[k])
     ws.tmp_u.noalias() = Lk * xk;
-
-    // u = -tmp_u - l[k]
-    uk.noalias() = -ws.tmp_u;
-    uk.noalias() -= lk;
-
-    // Solve Lam^T * u = u  (in-place)
-    Lambdak.transpose().template triangularView<Eigen::Upper>().solveInPlace(
-        uk);
+    ws.tmp_u.noalias() += lk;
+    uk.noalias() = -(ws.factors.Linv[k].transpose() * ws.tmp_u);
 
     // xnext = A*xk + b + B*u
     xnext.noalias() = Ak * xk;
