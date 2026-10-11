@@ -26,6 +26,9 @@ void ADMM<scalar, nx, nu, N, nx_tilde, nu_tilde,
     // pb = P_{k+1}' * B_k
     ws.factors.pb.noalias() = ws.factors.P[k + 1] * ocp.Bd[k];
 
+    // P_{k+1} b_k is constant during the ADMM iterations
+    ws.factors.Pb.col(k).noalias() = ws.factors.P[k + 1] * ocp.b.col(k);
+
     // bpa = B_k' * pa
     // ws.factors.bpa.noalias() = ocp.Bd[k].transpose() * ws.factors.pa;
     ws.factors.L[k].noalias() = ocp.Bd[k].transpose() * ws.factors.pa;
@@ -81,13 +84,11 @@ void ADMM<scalar, nx, nu, N, nx_tilde, nu_tilde,
 
   // -------- Backward pass: compute l[k], p[k] for k=N-1..0 --------
   for (int k = N - 1; k >= 0; --k) {
-    Eigen::Matrix<scalar, nx, nx> &Pnext = ws.factors.P[k + 1];
     auto pnext = ws.factors.p.col(k + 1);
     auto pn = ws.factors.p.col(k);
     auto ln = ws.factors.l.col(k);
     const Eigen::Matrix<scalar, nx, nx> &An = ocp.Ad[k];
     const Eigen::Matrix<scalar, nx, nu> &Bn = ocp.Bd[k];
-    const Eigen::Matrix<scalar, nx, 1> &bn = ocp.b.col(k);
     auto qn = ws.q_admm.col(k);
     auto sn = ws.s_admm.col(k);
     const Eigen::Matrix<scalar, nu, nu> &Lambdan =
@@ -95,7 +96,7 @@ void ADMM<scalar, nx, nu, N, nx_tilde, nu_tilde,
     const Eigen::Matrix<scalar, nu, nx> &Ln = ws.factors.L[k]; // nu×nx
 
     // tmp_x = Pnext' * b + pnext
-    ws.tmp_x.noalias() = Pnext * bn;
+    ws.tmp_x = ws.factors.Pb.col(k);
     ws.tmp_x.noalias() += pnext;
 
     // l[k] = B' * tmp_x + s

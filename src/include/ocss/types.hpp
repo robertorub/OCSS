@@ -47,6 +47,7 @@ struct RiccatiFactors {
   // p : nx x (N+1) (col k is p_k, terminal at col N)
   Eigen::Matrix<scalar, nu, N> l; //std::vector<Vec> l;
   Eigen::Matrix<scalar, nx, N + 1> p; //std::vector<Vec> p;
+  Eigen::Matrix<scalar, nx, N> Pb; // col k is P_{k+1} b_k
 
   // ---------- Temporary buffers for riccati factorization (preallocated) ----------
   Eigen::Matrix<scalar, nx, nx> pa;    // nx x nx
@@ -63,6 +64,7 @@ struct RiccatiFactors {
     P[N].setZero();
     l.setZero();
     p.setZero();
+    Pb.setZero();
     pa.setZero();
     pb.setZero();
     //bpa.setZero();
