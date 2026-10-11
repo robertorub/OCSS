@@ -13,22 +13,14 @@ void ADMM<scalar, nx, nu, N, nx_tilde, nu_tilde,
   for (int i = 0; i < N; i++) {
     ws.tmp1_x_tilde = ws.variables.y_x.col(i);
     ws.tmp1_x_tilde.noalias() -= rho * ws.variables.x_tilde.col(i);
-    ws.q_admm.col(i).noalias() =
-        ocp.state_constraints[i].F.transpose() *
-        ws.tmp1_x_tilde; // ocp.state_constraints.apply_FT(ws.q_admm.col(i),
-                         // ws.tmp1_x_tilde);//ws.q_admm.col(i).noalias() =
-                         // ocp.state_constraints.F.transpose()*ws.tmp1_x_tilde;
+    FT_times(ws.q_admm.col(i), ws.tmp1_x_tilde, i);
     ws.q_admm.col(i) += ocp.q.col(i);
     ws.s_admm.col(i) = ocp.s.col(i) + ws.variables.y_u.col(i);
     ws.s_admm.col(i).noalias() -= rho * ws.variables.u_tilde.col(i);
   }
   ws.tmp1_x_tilde = ws.variables.y_x.col(N);
   ws.tmp1_x_tilde.noalias() -= rho * ws.variables.x_tilde.col(N);
-  ws.pn_admm.noalias() =
-      ocp.state_constraints[N].F.transpose() *
-      ws.tmp1_x_tilde; // ocp.state_constraints.apply_FT(ws.pn_admm,
-                       // ws.tmp1_x_tilde);//ws.pn_admm.noalias() =
-                       // ocp.state_constraints.F.transpose()*ws.tmp1_x_tilde;
+  FT_times(ws.pn_admm, ws.tmp1_x_tilde, N);
   ws.pn_admm += ocp.pn;
 }
 
@@ -41,12 +33,18 @@ void ADMM<scalar, nx, nu, N, nx_tilde, nu_tilde,
           InputSet, Projectors...>::update_Q_and_R() {
   for (int i = 0; i < N; i++) {
     ws.Q_admm[i] = ocp.Q[i];
-    ws.Q_admm[i].noalias() += rho * ocp.state_constraints[i].FTF;
+    if (f_sparse) // F'F is diagonal
+      ws.Q_admm[i].diagonal() += rho * ocp.state_constraints[i].FTF.diagonal();
+    else
+      ws.Q_admm[i].noalias() += rho * ocp.state_constraints[i].FTF;
     ws.R_admm[i] = ocp.R[i];
     ws.R_admm[i].diagonal().array() += rho;
   }
   ws.Pn_admm = ocp.Pn;
-  ws.Pn_admm.noalias() += rho * ocp.state_constraints[N].FTF;
+  if (f_sparse)
+    ws.Pn_admm.diagonal() += rho * ocp.state_constraints[N].FTF.diagonal();
+  else
+    ws.Pn_admm.noalias() += rho * ocp.state_constraints[N].FTF;
 }
 
 template <typename scalar, int nx, int nu, int N, int nx_tilde, int nu_tilde,
@@ -84,13 +82,7 @@ void ADMM<scalar, nx, nu, N, nx_tilde, nu_tilde,
     ws.variables.y_u.col(i).noalias() += rho * (ws.tmp1_u_tilde - u_tilde_i);
 
     // relaxation step
-    ws.tmp2_x_tilde.noalias() =
-        ocp.state_constraints[i].F *
-        ws.variables.x.col(
-            i + 1); // ocp.state_constraints.apply_F(ws.tmp2_x_tilde,
-                    // ws.variables.x.col(i+1));//ws.tmp2_x_tilde.noalias() =
-                    // ocp.state_constraints.F*ws.variables.x.col(i+1); // i+1
-                    // because x[0] is x0
+    F_times(ws.tmp2_x_tilde, ws.variables.x.col(i + 1), i); // i+1 because x[0] is x0
 
     ws.tmp1_x_tilde.noalias() =
         (1 - options.alpha) *
@@ -134,24 +126,16 @@ bool ADMM<scalar, nx, nu, N, nx_tilde, nu_tilde,
     ws.tmp1_x_tilde.noalias() =
         ws.variables.x_tilde.col(k + 1) -
         ws.variables.x_tilde_prev.col(k + 1); // k+1 because x[0] is x0
-    ws.tmp_x.noalias() =
-        ocp.state_constraints[k].F.transpose() * ws.tmp1_x_tilde;
+    FT_times(ws.tmp_x, ws.tmp1_x_tilde, k);
     s2 += ws.tmp_x.squaredNorm();
-    ws.tmp_x.noalias() =
-        ocp.state_constraints[k].F.transpose() * ws.variables.y_x.col(k + 1);
+    FT_times(ws.tmp_x, ws.variables.y_x.col(k + 1), k);
 
     s_bound += ws.tmp_x.squaredNorm();
 
     s_bound += ws.variables.y_u.col(k).squaredNorm();
 
     r2 += (ws.variables.u.col(k) - ws.variables.u_tilde.col(k)).squaredNorm();
-    ws.tmp1_x_tilde.noalias() =
-        ocp.state_constraints[k].F *
-        ws.variables.x.col(
-            k + 1); // ocp.state_constraints.apply_F(ws.tmp1_x_tilde,
-                    // ws.variables.x.col(k+1)); //   ws.tmp1_x_tilde.noalias()
-                    // = ocp.state_constraints.F*ws.variables.x.col(k+1); // k+1
-                    // because x[0] is x0
+    F_times(ws.tmp1_x_tilde, ws.variables.x.col(k + 1), k); // k+1 because x[0] is x0
     r_bound_1 += ws.tmp1_x_tilde.squaredNorm();
     ws.tmp2_x_tilde.noalias() =
         ws.tmp1_x_tilde -
@@ -191,6 +175,7 @@ ADMM<scalar, nx, nu, N, nx_tilde, nu_tilde, UniformTrajectoryStateConstraints,
      Projectors...>::solve(const Eigen::Matrix<scalar, nx, 1> &_x0) {
 
   ws.variables.x.col(0) = _x0;
+  analyze_F();
   update_Q_and_R();
 
   update_q_and_s();
